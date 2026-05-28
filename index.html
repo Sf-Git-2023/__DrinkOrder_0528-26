@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>辦公室飲料訂購系統 - Office Beverage Ordering System</title>
+    <!-- Google Fonts 導入: Outfit 用於標題、Inter 用於內文 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- React 18, ReactDOM 18, Babel Standalone 與 Tailwind v3 CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind 相關設定，打造優雅的 HSL 色調與柔和陰影 -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+              display: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+              primary: {
+                DEFAULT: '#6366f1',
+                light: '#e0e7ff',
+                hover: '#5457e5'
+              },
+              accent: {
+                DEFAULT: '#f43f5e',
+                light: '#ffe4e6',
+                hover: '#e11d48'
+              },
+              amber: {
+                50: '#fffbeb', 100: '#fef3c7', 500: '#f59e0b', 600: '#d97706', 700: '#b45309',
+              },
+              sky: {
+                50: '#e0e7ff', 100: '#e0f2fe', 200: '#bae6fd', 500: '#6366f1', 600: '#6366f1', 700: '#5457e5',
+              }
+            },
+            boxShadow: {
+              'soft-lg': '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+              'soft-xl': '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              'glow': '0 0 20px rgba(14, 165, 233, 0.15)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #f8fafc;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* 煙霧或漸變動態載入動畫效果 */
+      @keyframes pulseSlow {
+        0%, 100% { opacity: 0.9; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.02); }
+      }
+      .bg-gradient-animate {
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+      }
+      
+      /* Vibrant Palette global color class maps */
+      .bg-sky-600 { background-color: #6366f1 !important; }
+      .hover\:bg-sky-500:hover { background-color: #5457e5 !important; }
+      .bg-sky-50 { background-color: #e0e7ff !important; }
+      .text-sky-600 { color: #6366f1 !important; }
+      .hover\:text-sky-700:hover { color: #5457e5 !important; }
+      .text-sky-300 { color: #e0e7ff !important; }
+      .bg-sky-600\/30 { background-color: rgba(99, 102, 241, 0.3) !important; }
+      .border-sky-500\/30 { border-color: rgba(99, 102, 241, 0.3) !important; }
+      .border-sky-400 { border-color: #6366f1 !important; }
+      .border-sky-100 { border-color: #e0e7ff !important; }
+      .text-sky-400 { color: #818cf8 !important; }
+      .bg-sky-500\/10 { background-color: rgba(99, 102, 241, 0.1) !important; }
+      .border-sky-400\/20 { border-color: rgba(99, 102, 241, 0.2) !important; }
+      .focus\:ring-sky-500\/10:focus { --tw-ring-color: rgba(99, 102, 241, 0.1) !important; }
+      .focus\:border-sky-500:focus { border-color: #6366f1 !important; }
+      .bg-slate-950 { background-color: #6366f1 !important; }
+      .bg-slate-900 { background-color: #1e1b4b !important; }
+      .text-emerald-500 { color: #f43f5e !important; }
+      .text-indigo-500 { color: #a855f7 !important; }
+      
+      /* 自訂微滾動條 */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+  <body class="text-slate-800 antialiased font-sans">
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useMemo, useRef } = React;
+
+      // --- GAS 原始 API 網址設定 ---
+      const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxBEQgnAYKOMk0xlL8UxWqvdEKcFP8I2MyAXIRSKkQLmVQ3EFoOjaI-LEkJ7nzDGqkoeA/exec";
+
+      // --- SVG 圖示庫 (無外部依賴，高效精準) ---
+      const Icons = {
+        Cup: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v13.5m.01-13.5h5.31c.21 0 .39.17.4.38a3.375 3.375 0 01-3.38 3.38h-.62m3.61 5.31c.15 0 .29.11.33.26a3.375 3.375 0 01-3.38 3.42c-.22 0-.4-.18-.4-.4M9.75 16.5H5.438c-.352 0-.642-.266-.688-.616L3.315 4.384A.688.688 0 014.004 3.75h5.746m0 12.75v1.25c0 1.933 1.567 3.5 3.5 3.5s3.5-1.567 3.5-3.5v-1.25" />
+          </svg>
+        ),
+        User: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.5-1.619z" />
+          </svg>
+        ),
+        Plus: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+        ),
+        Minus: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+          </svg>
+        ),
+        Edit: ({ className = "w-4 h-4", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+          </svg>
+        ),
+        Trash: ({ className = "w-4 h-4", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+        ),
+        Download: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+        ),
+        RefreshS: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        ),
+        TrendingUp: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.281m5.94 2.28-2.28 5.941" />
+          </svg>
+        ),
+        TrendingDown: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6L9 12.75l4.306-4.307a11.95 11.95 0 015.814 5.519l2.74 1.22m0 0l-5.94 2.28m5.94-2.28l-2.28 5.94" />
+          </svg>
+        ),
+        Search: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+          </svg>
+        ),
+        Check: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        ),
+        Info: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.056 1.056L11.25 12.553v3.31a.75.75 0 001.5 0v-4.5H11.25V11.25zm.75-2.25h.008v.008H12V9z" />
+          </svg>
+        ),
+        Sparkles: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 21l-.813-5.096L3 15l5.096-.813L9 9l.813 5.187L15 15l-5.187.904zM18.007 6.007L17.25 10l-.756-3.993L12.5 5.25l3.994-.756L17.25 1l.756 4.244L22 5.25l-3.993.757z" />
+          </svg>
+        ),
+        ClipboardList: ({ className = "w-5 h-5", ...props }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" class={className} {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.377 0A48.536 48.536 0 0112 3m0 0c2.917 0 5.747.294 8.5.862m-21 1.402L3.844 19.5a2.25 2.25 0 002.244 2.077H13.5m-10.5-12h9m-9-3h11.25" />
+          </svg>
+        )
+      };
+
+      // --- 豐滿且極其精美的 Fallback / 預設菜單 ---
+      const FALLBACK_MENU = [
+        { name: "茉莉奶香綠茶", price: 45, category: "人氣特調", description: "優選新鮮茉莉花茶葉，搭配香醇鮮奶，絕妙清爽質感" },
+        { name: "波霸厚黑糖奶茶", price: 65, category: "經典奶茶", description: "精熬手工黑糖波霸，完美融入經典紅玉奶茶內，甜而不膩" },
+        { name: "四季春純茶", price: 35, category: "現萃鮮茶", description: "金黃明亮茶湯，香氣悠揚高雅，喉韻回甘甘甜" },
+        { name: "手作鮮芋頭鮮奶", price: 75, category: "人氣特調", description: "香濃大甲芋頭熬煮搗泥，大方注入香醇純鮮奶" },
+        { name: "百香雙響炮", price: 60, category: "熱帶特調", description: "新鮮百香果粒果汁，搭配香Q波霸與嫩滑椰果，口感百分百" },
+        { name: "芝士草莓蓋奶", price: 85, category: "芝士蓋奶", description: "濃郁頂級進口芝士鹽奶蓋，鋪在酸甜草莓與茉莉綠茶冰沙上" },
+        { name: "日式宇治抹茶拿鐵", price: 70, category: "經典奶茶", description: "正宗宇治靜岡抹茶粉，搭配絲滑小農鮮乳，微苦回甘" },
+        { name: "紅柚翡翠啵啵", price: 65, category: "熱帶特調", description: "滿滿新鮮葡萄柚果肉，搭配翡翠綠茶與寒天啵啵，沁涼首選" },
+        { name: "凍頂烏龍拿鐵", price: 60, category: "經典奶茶", description: "經典重焙火凍頂烏龍茶，遇上濃醇鮮奶，完美交織炭焙香" },
+        { name: "手熬黑糖仙草凍奶", price: 55, category: "現萃鮮茶", description: "萬丹仙草慢火熬煮，柔嫩滑順，夏季消暑降火聖品" }
+      ];
+
+      // --- 預設展示訂單，避免一開始空洞 ---
+      const DEFAULT_ORDERS_DEMO = [
+        { orderId: "demo-1", timestamp: new Date().toISOString(), name: "主揪 阿翔", drink: "波霸厚黑糖奶茶", sugar: "微糖", ice: "少冰", quantity: 2, totalPrice: 130 },
+        { orderId: "demo-2", timestamp: new Date().toISOString(), name: "設計師 妙妙", drink: "芝士草莓蓋奶", sugar: "半糖", ice: "去冰", quantity: 1, totalPrice: 85 },
+        { orderId: "demo-3", timestamp: new Date().toISOString(), name: "工程師 小廖", drink: "四季春純茶", sugar: "無糖", ice: "正常冰", quantity: 3, totalPrice: 105 },
+        { orderId: "demo-4", timestamp: new Date().toISOString(), name: "秘書 晴晴", drink: "百香雙響炮", sugar: "微糖", ice: "少冰", quantity: 1, totalPrice: 60 }
+      ];
+
+      const SUGAR_OPTIONS = ["正常糖", "七分糖", "半糖", "微糖", "無糖"];
+      const ICE_OPTIONS = ["正常冰", "少冰", "微冰", "去冰", "溫熱"];
+
+      // 生成 Avatar 背景色杂湊
+      function getAvatarColor(name) {
+        if (!name) return "bg-slate-400";
+        const colors = [
+          "bg-teal-500", "bg-sky-500", "bg-amber-500", "bg-rose-500", 
+          "bg-indigo-500", "bg-emerald-500", "bg-orange-500", "bg-violet-500"
+        ];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
+      }
+
+      function App() {
+        // 核心狀態管理
+        const [apiUrl, setApiUrl] = useState(() => {
+          return localStorage.getItem("order_api_url") || DEFAULT_API_URL;
+        });
+        const [isDemoMode, setIsDemoMode] = useState(false);
+        const [menu, setMenu] = useState(FALLBACK_MENU);
+        const [orders, setOrders] = useState([]);
+        const [isLoading, setIsLoading] = useState(true);
+        const [error, setError] = useState(null);
+        
+        // 動作重整回饋
+        const [actionMessage, setActionMessage] = useState(null);
+        const [isSubmitting, setIsSubmitting] = useState(false);
+
+        // 搜尋、篩選
+        const [searchQuery, setSearchQuery] = useState("");
+        const [selectedFilterCategory, setSelectedFilterCategory] = useState("all");
+
+        // 表單編輯對象 (若為 null 則代表新增模式；若有 object 則代表修改模式)
+        const [editingOrder, setEditingOrder] = useState(null);
+
+        // 訂單狀態：表單當前輸入
+        const [formData, setFormData] = useState({
+          name: "",
+          drink: "",
+          sugar: "半糖",
+          ice: "少冰",
+          quantity: 1,
+          totalPrice: 0
+        });
+
+        // 當前選中的菜單類別 tabs
+        const categories = useMemo(() => {
+          const list = ["all", ...new Set(menu.map(item => item.category))];
+          return list;
+        }, [menu]);
+
+        const [activeFormCategory, setActiveFormCategory] = useState("all");
+
+        // 自動從 API 載入資料
+        useEffect(() => {
+          fetchData();
+        }, [apiUrl]);
+
+        const fetchData = async (silent = false) => {
+          if (!silent) setIsLoading(true);
+          setError(null);
+
+          try {
+            // 設定超時控制，避免 GAS 未設定或響應極慢時前端永久卡死
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+            const response = await fetch(apiUrl, {
+              method: 'GET',
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              throw new Error(`伺服器回應錯誤碼: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // 成功獲取資料，解除 Demo 狀態
+            setIsDemoMode(false);
+            
+            if (data.menu && data.menu.length > 0) {
+              setMenu(data.menu);
+            } else {
+              setMenu(FALLBACK_MENU); // 如果 GAS 沒菜單，用 fallback
+            }
+
+            if (data.orders) {
+              setOrders(data.orders);
+            } else {
+              setOrders([]);
+            }
+          } catch (err) {
+            console.error("API 連線失敗，自動轉為 [體驗/展示模式]:", err);
+            setIsDemoMode(true);
+            setError("無法建立與 GAS 後端 API 的連接（可能是超時、CORS 或 URL 錯誤）。系統已自動切換為本機 LocalStorage 離線體驗模式。");
+            
+            // 離線體驗模式：從 LocalStorage 讀取資料
+            const localOrders = localStorage.getItem("local_orders_data");
+            if (localOrders) {
+              setOrders(JSON.parse(localOrders));
+            } else {
+              // 第一次連線失敗，自動注入漂亮的預設 Demo 訂單
+              setOrders(DEFAULT_ORDERS_DEMO);
+              localStorage.setItem("local_orders_data", JSON.stringify(DEFAULT_ORDERS_DEMO));
+            }
+            setMenu(FALLBACK_MENU);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+
+        // 每當選擇了飲料或數量變更，自動重新算價格且塞入表單
+        useEffect(() => {
+          const selectedDrink = menu.find(item => item.name === formData.drink);
+          if (selectedDrink) {
+            setFormData(prev => ({
+              ...prev,
+              totalPrice: selectedDrink.price * prev.quantity
+            }));
+          }
+        }, [formData.drink, formData.quantity, menu]);
+
+        // 表單自動設定初值 (加載 menu 後預設選擇第一項)
+        useEffect(() => {
+          if (menu && menu.length > 0 && !formData.drink) {
+            setFormData(prev => ({
+              ...prev,
+              drink: menu[0].name,
+              totalPrice: menu[0].price
+            }));
+          }
+        }, [menu]);
+
+        // 觸發顯示動作狀態 Banner
+        const showToast = (message, type = "success") => {
+          setActionMessage({ text: message, type });
+          setTimeout(() => setActionMessage(null), 4000);
+        };
+
+        // 新增與修改處理 (POST)
+        const handleSubmitOrder = async (e) => {
+          e.preventDefault();
+          if (!formData.name.trim()) {
+            showToast("請填寫訂購人姓名！", "error");
+            return;
+          }
+
+          setIsSubmitting(true);
+          const toastWord = editingOrder ? "修改" : "送出";
+
+          // 封裝發送資料
+          const postData = {
+            action: editingOrder ? "update" : "create",
+            data: editingOrder 
+              ? { orderId: editingOrder.orderId, ...formData }
+              : formData
+          };
+
+          if (isDemoMode) {
+            // 本機體驗模式
+            let updatedOrders = [...orders];
+            if (editingOrder) {
+              // 修改
+              updatedOrders = orders.map(o => o.orderId === editingOrder.orderId 
+                ? { ...o, ...formData, totalPrice: formData.totalPrice }
+                : o
+              );
+              showToast(`[本機體驗] 訂單已成功修改！`);
+            } else {
+              // 新增
+              const newOrder = {
+                orderId: "local-" + Date.now(),
+                timestamp: new Date().toISOString(),
+                ...formData
+              };
+              updatedOrders.unshift(newOrder); // 最新加到在最上面
+              showToast(`[本機體驗] 訂單已送出，感謝您！`);
+            }
+            setOrders(updatedOrders);
+            localStorage.setItem("local_orders_data", JSON.stringify(updatedOrders));
+            resetForm();
+            setIsSubmitting(false);
+          } else {
+            // 雲端 GAS 模式
+            try {
+              // 為確保穩定避開 OPTIONS request (CORS)，我們以 'text/plain' 發送 json string
+              const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify(postData)
+              });
+
+              // GAS 回應可能是 CORS 重定向 opaque
+              // 為防 client read json 失敗，我們即使噴 error 依然跑 re-fetch
+              try {
+                const result = await response.json();
+                if (result.status === "success") {
+                  showToast(editingOrder ? "訂單更新成功！" : "訂單已成功送到雲端試算表！ 🎉");
+                } else {
+                  showToast(result.message || "伺服器異常", "error");
+                }
+              } catch (jsonErr) {
+                // 如果是 opaque 重定向導致 Json parse 失敗，但實際上 GAS 已經寫入
+                showToast(`訂單已發送處理，正在重整資料庫...`);
+              }
+
+              // 等待並同步重新獲取
+              resetForm();
+              setTimeout(() => {
+                fetchData(true);
+              }, 1200);
+
+            } catch (err) {
+              console.error(err);
+              showToast("送出訂單時發生連線問題，請稍後重試！", "error");
+            } finally {
+              setIsSubmitting(false);
+            }
+          }
+        };
+
+        // 刪除處理 (POST)
+        const handleDeleteOrder = async (orderId) => {
+          if (!window.confirm("您確定要刪除這筆訂單嗎？")) return;
+
+          showToast("正進行刪除，請稍候...");
+
+          if (isDemoMode) {
+            const updatedOrders = orders.filter(o => o.orderId !== orderId);
+            setOrders(updatedOrders);
+            localStorage.setItem("local_orders_data", JSON.stringify(updatedOrders));
+            showToast("[本機體驗] 訂單刪除成功！");
+          } else {
+            try {
+              const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify({
+                  action: "delete",
+                  data: { orderId }
+                })
+              });
+
+              showToast("正在從試算表移除並重整...");
+              
+              setTimeout(() => {
+                fetchData(true);
+              }, 1200);
+
+            } catch (err) {
+              showToast("刪除時發生異常，請重試", "error");
+            }
+          }
+        };
+
+        // 開始編輯 (把資料回填至表單區，並滾動到表單最上方)
+        const handleStartEdit = (order) => {
+          setEditingOrder(order);
+          setFormData({
+            name: order.name,
+            drink: order.drink,
+            sugar: order.sugar,
+            ice: order.ice,
+            quantity: order.quantity,
+            totalPrice: order.totalPrice
+          });
+          
+          // 自動找到該飲料對應的 category 並切換 Form tabs 讓人好看
+          const drinkObj = menu.find(m => m.name === order.drink);
+          if (drinkObj) {
+            setActiveFormCategory(drinkObj.category);
+          }
+
+          // 平滑滾動到填單表單處，友善體驗！
+          const formElement = document.getElementById("order-form-container");
+          if (formElement) {
+            formElement.scrollIntoView({ behavior: 'smooth' });
+          }
+        };
+
+        // 重設/清空表單
+        const resetForm = () => {
+          setEditingOrder(null);
+          // 保留訂購人方便下次點、或是乾脆全部淨空
+          setFormData(prev => ({
+            ...prev,
+            sugar: "半糖",
+            ice: "少冰",
+            quantity: 1,
+            totalPrice: menu.length > 0 ? menu[0].price : 0
+          }));
+        };
+
+        // 今日數據統計計數器
+        const stats = useMemo(() => {
+          const totalCups = orders.reduce((sum, o) => sum + o.quantity, 0);
+          const totalIncome = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+          const uniquePeople = new Set(orders.map(o => o.name)).size;
+          
+          // 計算最多人訂購熱門飲料品項
+          const drinkCounts = {};
+          orders.forEach(o => {
+            drinkCounts[o.drink] = (drinkCounts[o.drink] || 0) + o.quantity;
+          });
+          
+          let popularDrink = "無";
+          let maxCount = 0;
+          for (const [drink, count] of Object.entries(drinkCounts)) {
+            if (count > maxCount) {
+              maxCount = count;
+              popularDrink = `${drink} (${count}杯)`;
+            }
+          }
+
+          return { totalCups, totalIncome, uniquePeople, popularDrink };
+        }, [orders]);
+
+        // 篩選與搜尋後的訂單清單
+        const filteredOrders = useMemo(() => {
+          return orders.filter(order => {
+            const matchesSearch = order.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                order.drink.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            if (selectedFilterCategory === "all") return matchesSearch;
+            
+            // 找飲料屬於哪個分類
+            const drinkObj = menu.find(m => m.name === order.drink);
+            const matchesCategory = drinkObj && drinkObj.category === selectedFilterCategory;
+            return matchesSearch && matchesCategory;
+          });
+        }, [orders, searchQuery, selectedFilterCategory, menu]);
+
+        // 主揪救星「一鍵規格彙整表」
+        const aggregatedOrders = useMemo(() => {
+          const summary = {};
+          orders.forEach(o => {
+            const key = `${o.drink} 【${o.sugar} / ${o.ice}】`;
+            if (!summary[key]) {
+              summary[key] = {
+                drinkName: o.drink,
+                sugar: o.sugar,
+                ice: o.ice,
+                quantity: 0,
+                price: o.totalPrice / o.quantity
+              };
+            }
+            summary[key].quantity += o.quantity;
+          });
+          
+          return Object.values(summary).sort((a,b) => b.quantity - a.quantity);
+        }, [orders]);
+
+        // 一鍵下載 HTML 機制
+        const handleDownloadHtmlFile = () => {
+          try {
+            // 取得當前整個 DOM HTML
+            const docText = document.documentElement.outerHTML;
+            const blob = new Blob([docText], { type: "text/html;charset=utf-8" });
+            const tempUrl = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.href = tempUrl;
+            link.download = `辦公室飲料訂購系統_單檔版.html`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(tempUrl);
+            
+            showToast("成功打包 HTML 獨立單檔！您可以發給其他人直接雙擊使用。");
+          } catch (err) {
+            showToast("打包檔案失敗，請複製本頁連結或手動儲存網頁", "error");
+          }
+        };
+
+        // 表單中快速一鍵選擇飲料
+        const handleSelectDrinkInForm = (menuItem) => {
+          setFormData(prev => ({
+            ...prev,
+            drink: menuItem.name,
+            totalPrice: menuItem.price * prev.quantity
+          }));
+        };
+
+        // 隨機推薦（我很幸運！）
+        const handleLuckySelect = () => {
+          if (menu.length === 0) return;
+          const randomIndex = Math.floor(Math.random() * menu.length);
+          const luckyDrink = menu[randomIndex];
+          const randomSugar = SUGAR_OPTIONS[Math.floor(Math.random() * SUGAR_OPTIONS.length)];
+          const randomIce = ICE_OPTIONS[Math.floor(Math.random() * ICE_OPTIONS.length)];
+          
+          setFormData(prev => ({
+            ...prev,
+            drink: luckyDrink.name,
+            sugar: randomSugar,
+            ice: randomIce,
+            quantity: 1,
+            totalPrice: luckyDrink.price
+          }));
+          
+          // 切換表單頁籤到此飲料的分類
+          setActiveFormCategory(luckyDrink.category);
+          
+          showToast(`✨ 為您挑選了：${luckyDrink.name} (${randomSugar}/${randomIce})！`);
+          
+          const formElement = document.getElementById("order-form-container");
+          if (formElement) formElement.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // 一鍵複製主揪呼叫清單
+        const handleCopyHostAggSummary = () => {
+          if (aggregatedOrders.length === 0) return;
+          
+          const textToCopy = aggregatedOrders.map((o, idx) => 
+            `${idx + 1}. ${o.drinkName} (${o.sugar}/${o.ice}) x ${o.quantity} 杯`
+          ).join("\n");
+          
+          const header = `📋 【辦公室今日飲料訂單統計】\n總杯數：${stats.totalCups} 杯 | 總金額：NT$ ${stats.totalIncome}\n-----------------------------\n`;
+          const footer = `\n-----------------------------\n訂購總人數：${stats.uniquePeople} 人 | 統計時間：${new Date().toLocaleTimeString()}`;
+          
+          navigator.clipboard.writeText(header + textToCopy + footer)
+            .then(() => showToast("已將「打電話彙整清單」複製到剪貼簿！ 📱"))
+            .catch(() => showToast("複製失敗，請手動圈選複製", "error"));
+        };
+
+        // 保存新的 API URL
+        const handleSaveApiUrl = (newUrl) => {
+          if (!newUrl || !newUrl.startsWith("http")) {
+            showToast("請輸入有效的 HTTPS URL 網址", "error");
+            return;
+          }
+          localStorage.setItem("order_api_url", newUrl);
+          setApiUrl(newUrl);
+          showToast("GAS API 網址已完成更新，系統正在重整...");
+        };
+
+        return (
+          <div class="min-h-screen pb-20">
+            {/* 動態漂浮 Toast 背景反饋 */}
+            {actionMessage && (
+              <div class="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl transition-all duration-300 transform translate-y-0 text-white font-medium bg-slate-900 border border-slate-700 animate-bounce">
+                <span class={actionMessage.type === "error" ? "text-rose-400" : "text-emerald-400"}>
+                  {actionMessage.type === "error" ? "✕" : "✓"}
+                </span>
+                <span>{actionMessage.text}</span>
+              </div>
+            )}
+
+            {/* 精美炫目、大氣的大漸變 Header 區塊 */}
+            <header class="bg-gradient-animate text-white relative overflow-hidden shadow-soft-xl pt-10 pb-16">
+              {/* 背景網格與漂浮粒子視覺裝飾 */}
+              <div class="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]"></div>
+              <div class="absolute -right-16 -top-16 w-80 h-80 bg-sky-500 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+              <div class="absolute -left-16 -bottom-16 w-80 h-80 bg-teal-500 rounded-full blur-3xl opacity-10 pointer-events-none"></div>
+
+              <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                  <div>
+                    {/* 微標籤與系統圖標 */}
+                    <div class="inline-flex items-center gap-2 px-3  rounded-full text-xs font-semibold tracking-wide uppercase text-sky-400 bg-sky-500/10 border border-sky-400/20 mb-4 animate-pulse">
+                      <Icons.Sparkles class="w-3.5 h-3.5" />
+                      <span>OFFICE TEA TIME 🎉</span>
+                    </div>
+                    {/* 主標題 */}
+                    <h1 class="text-4xl md:text-5xl font-extrabold font-display tracking-tight text-white flex items-center gap-3 bg-clip-text">
+                      <span class="p-3 bg-sky-600/30 rounded-2xl border border-sky-500/30 shadow-glow text-sky-300">
+                        <Icons.Cup class="w-8 h-8 md:w-10 md:h-10 animate-[bounce_3s_infinite]" />
+                      </span>
+                      辦公室飲料訂購系統
+                    </h1>
+                    {/* 副標說明今日點單統計 */}
+                    <p class="mt-3 text-slate-300 text-sm md:text-base max-w-2xl font-light">
+                      今天想喝什麼下午茶？請點選下方餐單快速點茶！主揪能一鍵彙整點單，打電話叫外送不費吹灰之力！
+                      <span class="block mt-1 font-mono text-xs text-sky-400 font-medium">✨ 支援多裝置即時雲端同步</span>
+                    </p>
+                  </div>
+
+                  {/* 頂部快捷操作按鈕列 */}
+                  <div class="flex flex-wrap items-center gap-3">
+                    {/* 下載獨立 index.htm 操作 */}
+                    <button 
+                      onClick={handleDownloadHtmlFile}
+                      class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-100 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 transition duration-200 text-sm font-medium shadow-sm hover:shadow-glow group cursor-pointer"
+                      title="下載獨立運行的 HTML 單一檔案，雙擊即可直接运行"
+                    >
+                      <Icons.Download class="w-4 h-4 group-hover:translate-y-1 transition-transform" />
+                      <span>下載本頁 (.html)</span>
+                    </button>
+
+                    {/* 手動更新/強制同步按鈕 */}
+                    <button 
+                      onClick={() => fetchData(false)}
+                      class={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition duration-200 text-sm font-medium shadow-sm cursor-pointer ${
+                        isLoading ? 'bg-sky-700/50 text-slate-400' : 'bg-sky-600 hover:bg-sky-500 text-white hover:scale-102 active:scale-98'
+                      }`}
+                      disabled={isLoading}
+                    >
+                      <Icons.RefreshS class={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                      <span>同步最新資料</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 顯示系統核心 API 位址，提供自訂部署 */}
+                <div class="mt-6 p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-300">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span class="font-semibold text-slate-200">後端 API 連結試算表：</span>
+                    <span class="font-mono bg-slate-900/50 px-2 py-0.5 rounded truncate max-w-xs md:max-w-md text-slate-400">{apiUrl}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const newU = window.prompt("請貼上您自訂的部屬 Google Apps Script API 網址：", apiUrl);
+                      if (newU) handleSaveApiUrl(newU);
+                    }}
+                    class="text-sky-400 hover:text-sky-300 underline font-medium cursor-pointer"
+                  >
+                    修改試算表 API 網址
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* 主內容區 */}
+            <main class="max-w-7xl mx-auto px-4 sm:px-6 -mt-8 relative z-20">
+              
+              {/* ⚠️ 當處於離線體驗模式 / API 連接失敗時，彈出高質感 Banner */}
+              {isDemoMode && (
+                <div class="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 mb-6 shadow-soft-lg flex items-start gap-3.5 text-amber-800 animate-[pulseSlow_4s_infinite]">
+                  <div class="p-2 bg-amber-100 rounded-xl text-amber-600 shrink-0">
+                    <Icons.Info class="w-5 h-5" />
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-extrabold text-amber-950 flex items-center gap-2">
+                      ⚠️ 系統正處於 [離線體驗模式]
+                    </h3>
+                    <p class="text-xs text-amber-800/90 mt-1 leading-relaxed">
+                      由於連線偵測失敗（或是跨網域 CORS 行為被瀏覽器阻擋），為避免您卡死，已自動轉成本機沙盒。此時您依然可以流暢點餐、加減項目。所有的異動將暫時儲存在您本機的網頁快取中。
+                    </p>
+                    <div class="mt-2.5 flex flex-wrap gap-3 items-center">
+                      <span class="text-[11px] bg-amber-100 px-2 py-0.5 rounded font-mono text-amber-700 font-medium">CORS 暫時封鎖 / API 超時</span>
+                      <button 
+                        onClick={() => fetchData(false)}
+                        class="text-xs font-bold text-sky-700 hover:text-sky-800 transition underline cursor-pointer"
+                      >
+                        重新連線
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 今日看板統計卡片區域 Bento Grid */}
+              <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {/* 1. 總杯數 */}
+                <div class="bg-white p-5 rounded-2xl shadow-soft-lg border border-slate-100 hover:shadow-soft-xl transition duration-300 relative overflow-hidden group">
+                  <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform text-slate-900 pointer-events-none">
+                    <Icons.Cup class="w-16 h-16" />
+                  </div>
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">今日熱度總杯數</p>
+                  <p class="text-3xl font-bold font-display text-slate-800 mt-1.5 flex items-baseline gap-1">
+                    {stats.totalCups} 
+                    <span class="text-sm font-normal text-slate-400">杯</span>
+                  </p>
+                  <div class="mt-2 flex items-center gap-1.5 text-xs text-indigo-500 font-medium">
+                    <Icons.TrendingUp class="w-3.5 h-3.5" />
+                    <span>今天下午茶進度</span>
+                  </div>
+                </div>
+
+                {/* 2. 總金額 */}
+                <div class="bg-white p-5 rounded-2xl shadow-soft-lg border border-slate-100 hover:shadow-soft-xl transition duration-300 relative overflow-hidden group">
+                  <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform text-slate-900 pointer-events-none">
+                    <span class="text-5xl font-mono">$</span>
+                  </div>
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">今日茶資累計</p>
+                  <p class="text-3xl font-bold font-display text-sky-600 mt-1.5 flex items-baseline gap-1">
+                    <span class="text-base font-normal">NT$</span> {stats.totalIncome}
+                  </p>
+                  <div class="mt-2 flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
+                    <Icons.Check class="w-3.5 h-3.5" />
+                    <span>今日已分攤</span>
+                  </div>
+                </div>
+
+                {/* 3. 最受歡迎品項 */}
+                <div class="bg-white p-5 rounded-2xl shadow-soft-lg border border-slate-100 hover:shadow-soft-xl transition duration-300 relative overflow-hidden group col-span-1">
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">今日人氣王</p>
+                  <p class="text-lg font-bold text-slate-700 mt-1.5 truncate" title={stats.popularDrink}>
+                    {stats.popularDrink}
+                  </p>
+                  <div class="mt-2 text-xs text-amber-600 font-medium flex items-center gap-1.5">
+                    <Icons.Sparkles class="w-3.5 h-3.5" />
+                    <span>最多同事指定</span>
+                  </div>
+                </div>
+
+                {/* 4. 點單人數 */}
+                <div class="bg-white p-5 rounded-2xl shadow-soft-lg border border-slate-100 hover:shadow-soft-xl transition duration-300 relative overflow-hidden group">
+                  <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform text-slate-900 pointer-events-none">
+                    <Icons.User class="w-16 h-16" />
+                  </div>
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">點單不重複人數</p>
+                  <p class="text-3xl font-bold font-display text-slate-800 mt-1.5 flex items-baseline gap-1">
+                    {stats.uniquePeople} 
+                    <span class="text-sm font-normal text-slate-400">人</span>
+                  </p>
+                  <div class="mt-2 text-xs text-slate-500 font-medium">
+                    辦公室團結率高
+                  </div>
+                </div>
+              </section>
+
+              {/* 橫切面：左欄填單，右欄清單與彙整 */}
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                {/* === 左邊欄：填單元件 (OrderForm) === */}
+                <div id="order-form-container" class="lg:col-span-5 bg-white rounded-3xl shadow-soft-xl border border-slate-100 p-6 md:p-8 sticky top-6">
+                  
+                  <div class="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 class="text-2xl font-bold font-display text-slate-900 flex items-center gap-2">
+                        {editingOrder ? "✏️ 變更訂單規格" : "飲品規格單 🥤"}
+                      </h2>
+                      <p class="text-slate-400 text-xs mt-1">
+                        {editingOrder ? "正在編輯您選取的那筆訂單項目" : "選擇您想來一杯的下午茶品項並調整甜度冰塊"}
+                      </p>
+                    </div>
+                    
+                    {/* 很幸運！隨機挑一杯按鈕 */}
+                    {!editingOrder && (
+                      <button 
+                        type="button"
+                        onClick={handleLuckySelect}
+                        class="text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200 transition duration-150 flex items-center gap-1 cursor-pointer"
+                        title="幫我想喝什麼"
+                      >
+                        <Icons.Sparkles class="w-3.5 h-3.5 text-sky-500" />
+                        <span>我很幸運 (隨機)</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSubmitOrder} class="space-y-6">
+                    {/* 1. 訂購人姓名 */}
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2" for="client-name">
+                        1. 訂購人是誰？ <span class="text-rose-500">*</span>
+                      </label>
+                      <div class="relative rounded-2xl shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                          <Icons.User class="w-5 h-5 text-slate-400" />
+                        </div>
+                        <input
+                          type="text"
+                          id="client-name"
+                          placeholder="請輸入您的姓名或綽號 (例如：小廖)"
+                          class="w-full bg-slate-50 focus:bg-white text-slate-800 placeholder-slate-400 font-medium pl-11 pr-4 py-3.5 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all duration-200"
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          maxLength={15}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* 2. 精美飲料卡片選單 (這比死板的 dropdown 亮眼十倍！) */}
+                    <div>
+                      <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          2. 挑選您想要的茶飲 <span class="text-rose-500">*</span>
+                        </label>
+                        <span class="text-[11px] text-sky-600 font-semibold bg-sky-50 px-2 py-0.5 rounded-full">
+                          目前選擇：{formData.drink || "未選取"}
+                        </span>
+                      </div>
+
+                      {/* 卡片式的飲料分類 Tabs */}
+                      <div class="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-2 px-2 scroll-smooth">
+                        {categories.map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setActiveFormCategory(cat)}
+                            class={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                              activeFormCategory === cat
+                                ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                : "bg-slate-100 hover:bg-slate-200 text-slate-500"
+                            }`}
+                          >
+                            {cat === "all" ? "全部飲品" : cat}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 飲料清單網格 */}
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 pb-1 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
+                        {menu
+                          .filter(item => activeFormCategory === "all" || item.category === activeFormCategory)
+                          .map((item) => {
+                            const isSelected = formData.drink === item.name;
+                            return (
+                              <button
+                                key={item.name}
+                                type="button"
+                                onClick={() => handleSelectDrinkInForm(item)}
+                                class={`text-left p-3.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                                  isSelected 
+                                    ? "bg-sky-50/80 border-sky-500 ring-2 ring-sky-500/20 shadow-sm"
+                                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                }`}
+                              >
+                                <div class="flex justify-between items-start gap-1">
+                                  <span class="font-bold text-xs text-slate-800 line-clamp-1">{item.name}</span>
+                                  <span class="font-extrabold text-xs text-sky-600 shrink-0">NT${item.price}</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" title={item.description}>
+                                  {item.description || "美味人氣手搖飲料推薦"}
+                                </p>
+                              </button>
+                            );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 3. 甜度調整 (按鈕群組) */}
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        3. 調整甜度 (Sugar)
+                      </label>
+                      <div class="grid grid-cols-5 gap-1.5">
+                        {SUGAR_OPTIONS.map(sugar => {
+                          const isSelected = formData.sugar === sugar;
+                          return (
+                            <button
+                              key={sugar}
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, sugar }))}
+                              class={`py-2 text-[11px] font-bold rounded-xl transition cursor-pointer text-center ${
+                                isSelected 
+                                  ? "bg-slate-950 text-white shadow-md shadow-slate-950/25 scale-102"
+                                  : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                              }`}
+                            >
+                              {sugar}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 4. 冰塊調整 (按鈕群組) */}
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        4. 調整冰量 (Ice)
+                      </label>
+                      <div class="grid grid-cols-5 gap-1.5">
+                        {ICE_OPTIONS.map(ice => {
+                          const isSelected = formData.ice === ice;
+                          return (
+                            <button
+                              key={ice}
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, ice }))}
+                              class={`py-2 text-[11px] font-bold rounded-xl transition cursor-pointer text-center ${
+                                isSelected 
+                                  ? "bg-sky-600 text-white shadow-md shadow-sky-600/20 scale-102"
+                                  : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                              }`}
+                            >
+                              {ice}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 5. 數量加減器 */}
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        5. 點茶杯數
+                      </label>
+                      <div class="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl w-fit border border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }))}
+                          class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 disabled:opacity-40 transition-all font-bold cursor-pointer"
+                          disabled={formData.quantity <= 1}
+                        >
+                          <Icons.Minus class="w-4 h-4" />
+                        </button>
+                        <span class="w-12 text-center text-lg font-bold text-slate-800">{formData.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, quantity: prev.quantity + 1 }))}
+                          class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition-all font-bold cursor-pointer"
+                        >
+                          <Icons.Plus class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 底部總金額與送出按鈕 */}
+                    <div class="pt-6 border-t border-slate-100 space-y-4">
+                      <div class="bg-indigo-50/50 p-4 rounded-2xl flex items-center justify-between border border-indigo-100/50">
+                        <div>
+                          <span class="text-xs text-indigo-500 font-bold block">點單總費用：</span>
+                          <span class="font-mono text-xs text-slate-400 mt-1 block">
+                            {formData.drink} ✕ {formData.quantity} 杯
+                          </span>
+                        </div>
+                        <div class="text-right">
+                          <span class="text-2xl font-black font-display text-slate-900 tracking-tight">
+                            <span class="text-sm font-normal text-slate-500">NT$</span> {formData.totalPrice}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="flex gap-2">
+                        <button
+                          type="submit"
+                          className={`flex-1 flex items-center justify-center gap-2 py-4 px-6 rounded-2xl text-white font-bold transition-all shadow-md cursor-pointer ${
+                            isSubmitting 
+                              ? "bg-slate-400 cursor-not-allowed" 
+                              : "bg-sky-600 hover:bg-sky-500 hover:shadow-soft-xl hover:scale-101 active:scale-99"
+                          }`}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Icons.RefreshS class="w-5 h-5 animate-spin" />
+                              <span>發送資料中...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Icons.Check class="w-5 h-5" />
+                              <span>{editingOrder ? "確 認 修 改 訂 單" : "送 出 訂 單"}</span>
+                            </>
+                          )}
+                        </button>
+
+                        {editingOrder && (
+                          <button
+                            type="button"
+                            onClick={resetForm}
+                            class="px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition cursor-pointer"
+                          >
+                            取消
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </form>
+                </div>
+
+
+                {/* === 右邊欄：今日訂單列表 + 主揪彙整彙總 === */}
+                <div class="lg:col-span-7 space-y-8">
+                  
+                  {/* 今日訂單列表 (OrderList) */}
+                  <div class="bg-white rounded-3xl shadow-soft-xl border border-slate-100 p-6 md:p-8">
+                    
+                    {/* 搜尋、篩選面板 */}
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                      <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                          <Icons.ClipboardList class="w-5.5 h-5.5 text-sky-600" />
+                          <span>今天誰點了什麼飲料？</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                          今日全體同仁訂單明細
+                        </p>
+                      </div>
+
+                      {/* 篩選與搜尋欄 */}
+                      <div class="flex gap-2 w-full md:w-auto">
+                        <div class="relative flex-1 md:w-48 shadow-sm">
+                          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <Icons.Search class="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="搜尋名字或品項"
+                            class="w-full bg-slate-50 focus:bg-white text-xs pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 transition-all"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                          />
+                        </div>
+
+                        <select
+                          class="bg-slate-50 text-xs px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 cursor-pointer"
+                          value={selectedFilterCategory}
+                          onChange={(e) => setSelectedFilterCategory(e.target.value)}
+                        >
+                          <option value="all">所有類別</option>
+                          {categories.filter(c => c !== "all").map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 清單顯示 */}
+                    {isLoading ? (
+                      <div class="py-16 text-center space-y-3">
+                        <Icons.RefreshS class="w-10 h-10 animate-spin text-sky-500 mx-auto" />
+                        <p class="text-slate-400 text-sm">正在從 Google 試算表載入今天下午茶進度...</p>
+                      </div>
+                    ) : orders.length === 0 ? (
+                      /* 精美高質感空狀態 */
+                      <div class="py-16 px-6 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                        <div class="relative w-28 h-28 mx-auto mb-5">
+                          <span class="absolute top-1 right-2 text-3xl animate-bounce">😴</span>
+                          <Icons.Cup class="w-24 h-24 text-slate-300 mx-auto animate-pulse" strokeWidth="1.2" />
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-700">目前無人訂購 🥤</h3>
+                        <p class="text-xs text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
+                          今天還沒有任何人點餐唷！
+                          下午工作累了吧？快來當辦公室第一個點單的快樂飲料大師！
+                        </p>
+                        <div class="mt-6">
+                          <button 
+                            type="button"
+                            onClick={handleLuckySelect}
+                            class="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition hover:scale-102 cursor-pointer"
+                          >
+                            <Icons.Sparkles class="w-4 h-4" />
+                            <span>幫我決定一杯，衝了！</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : filteredOrders.length === 0 ? (
+                      <div class="py-12 text-center text-slate-400 text-xs">
+                        找不到符合搜尋 「{searchQuery}」 的訂單。
+                      </div>
+                    ) : (
+                      /* 訂單卡片網格 */
+                      <div class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                        {filteredOrders.map((item) => {
+                          const initial = item.name ? item.name.charAt(0) : "無";
+                          return (
+                            <div 
+                              key={item.orderId}
+                              class={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition hover:shadow-soft-lg group ${
+                                editingOrder && editingOrder.orderId === item.orderId
+                                  ? "bg-slate-50 border-sky-400 ring-1 ring-sky-300"
+                                  : "bg-white border-slate-100"
+                              }`}
+                            >
+                              <div class="flex items-center gap-3 min-w-0">
+                                {/* 專屬配色大頭貼 */}
+                                <div class={`w-10 h-10 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-sm ${getAvatarColor(item.name)}`}>
+                                  {initial}
+                                </div>
+                                
+                                <div class="min-w-0">
+                                  <div class="flex items-center gap-2">
+                                    <span class="font-extrabold text-slate-800 text-sm truncate">{item.name}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono hidden sm:block">
+                                      {item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* 飲料內容規格 */}
+                                  <div class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-1.5 leading-relaxed">
+                                    <span class="font-semibold text-slate-800">{item.drink}</span>
+                                    <span class="text-slate-300">|</span>
+                                    <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{item.sugar}</span>
+                                    <span class="bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{item.ice}</span>
+                                    <span class="text-slate-700 font-medium">✕ {item.quantity}杯</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div class="flex items-center gap-4 shrink-0">
+                                <div class="text-right">
+                                  <div class="text-sm font-bold text-slate-800">NT$ {item.totalPrice}</div>
+                                  <span class="text-[10px] text-slate-400">NT$ {item.totalPrice / item.quantity}/杯</span>
+                                </div>
+
+                                {/* 編輯 / 刪除按鈕 */}
+                                <div class="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleStartEdit(item)}
+                                    className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all tooltip cursor-pointer"
+                                    title="編輯此筆訂單"
+                                  >
+                                    <Icons.Edit class="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteOrder(item.orderId)}
+                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all tooltip cursor-pointer"
+                                    title="刪除此筆訂單"
+                                  >
+                                    <Icons.Trash class="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+
+                  {/* === 主揪神助手：規格彙整統計卡 (Host Synergy Summary) === */}
+                  {orders.length > 0 && (
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl text-white shadow-soft-xl border border-slate-700/30 p-6 md:p-8 animate-fade-in">
+                      <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
+                        <div>
+                          <div class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-400 bg-sky-500/10 px-2.5 py-0.5 rounded-full mb-1">
+                            <span>主揪打撥神助手 📱</span>
+                          </div>
+                          <h3 class="text-lg font-bold text-white">點餐規格一鍵彙整</h3>
+                        </div>
+
+                        <button 
+                          onClick={handleCopyHostAggSummary}
+                          class="flex items-center gap-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 hover:text-white px-3 py-2 rounded-xl transition cursor-pointer"
+                        >
+                          <span class="text-sky-400">📋</span>
+                          <span>複製呼叫清單</span>
+                        </button>
+                      </div>
+
+                      <p class="text-xs text-slate-400 mb-4 font-light">
+                        系統已將所有同仁所選「飲料 + 甜度 + 冰量」完全一致的品項合併累計！主揪撥打電話或填寫外部點單時，不用再逐筆核對！
+                      </p>
+
+                      <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                        {aggregatedOrders.map((item, index) => (
+                          <div key={index} class="flex items-center justify-between text-xs bg-slate-800/40 border border-slate-800 rounded-xl p-3 hover:bg-slate-800/60 transition">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                              <span class="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-[10px] font-bold text-slate-300 shrink-0">
+                                {index + 1}
+                              </span>
+                              <div class="truncate">
+                                <span class="font-bold text-slate-100 block truncate">{item.drinkName}</span>
+                                <span class="text-[10px] text-slate-400 block mt-0.5">
+                                  {item.sugar} / {item.ice}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-3 shrink-0">
+                              <span class="bg-sky-500/10 text-sky-400 text-xs font-bold px-2 py-1 rounded">
+                                {item.quantity} 杯
+                              </span>
+                              <span class="text-slate-400 font-mono">
+                                NT$ {item.price * item.quantity}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div class="mt-4 pt-4 border-t border-slate-700/50 flex justify-between items-center text-xs">
+                        <span class="text-slate-400">合計累加：</span>
+                        <span class="font-bold font-display text-base text-white">
+                          共 {stats.totalCups} 杯 ➔ NT$ {stats.totalIncome} 元
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            </main>
+
+            {/* 頁尾 */}
+            <footer class="mt-20 border-t border-slate-200 py-8 text-center text-slate-400 text-xs">
+              <div class="max-w-7xl mx-auto px-4">
+                <p class="font-medium text-slate-500">🥤 辦公室下午茶點餐小幫手 - 讓每次團購都精準無痛</p>
+                <p class="mt-2 font-mono text-[10px] text-slate-400">
+                  Powered by React & Tailwind CSS. All rights reserved 2026.
+                </p>
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "辦公室飲料訂購系統",
+  "description": "一個精美、響應式的辦公室下午茶飲料訂購網頁，支援與 Google Apps Script 後端 API 連接，提供填單、統計以及今日訂單管理功能。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
